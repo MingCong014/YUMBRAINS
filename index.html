@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YUMBRAINS Prototype with Login</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      overflow: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+      z-index: -1;
+    }
+
+    .login-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+      width: 90%;
+      max-width: 450px;
+      padding: 40px 30px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      transform: translateY(0);
+      transition: transform 0.5s ease, opacity 0.5s ease;
+      z-index: 10;
+    }
+
+    .login-container.hidden {
+      transform: translateY(-50px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .logo {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .login-options {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 25px 0;
+    }
+
+    .google-btn-container, 
+    .instagram-btn-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    .g_id_signin {
+      width: 240px;
+      height: 50px;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+      transition: all 0.3s ease !important;
+    }
+
+    .g_id_signin:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .instagram-btn {
+      width: 240px;
+      height: 50px;
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3);
+    }
+
+    .instagram-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(220, 39, 67, 0.4);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 25px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e0e0e0;
+    }
+
+    .divider span {
+      padding: 0 15px;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .email-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    label {
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+      font-size: 14px;
+    }
+
+    input {
+      padding: 14px 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #6a11cb;
+      box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.1);
+    }
+
+    .password-container {
+      position: relative;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #777;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(106, 17, 203, 0.3);
+      margin-top: 5px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(106, 17, 203, 0.4);
+    }
+
+    .form-footer {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .form-footer a {
+      color: #6a11cb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .form-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .user-info {
+      margin-top: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      display: none;
+    }
+
+    .user-info.visible {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .user-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 15px;
+      object-fit: cover;
+      border: 3px solid #fff;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    .user-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #333;
+      font-size: 18px;
+    }
+
+    .user-email {
+      color: #666;
+      font-size: 15px;
+      margin-bottom: 5px;
+    }
+
+    .user-provider {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 15px;
+      font-style: italic;
+    }
+
+    .continue-btn {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(106, 17, 203, 0.3);
+      display: inline-block;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .continue-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(106, 17, 203, 0.4);
+    }
+
+    .prototype-container {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background-color: white;
+      display: none;
+    }
+
+    #iframe-prototype {
+      width: 100%;
+      height: 100%;
+      scale: 1.25;
+      border: none;
+      display: block;
+      background: white;
+    }
+
+    .bubbles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      animation: float 15s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 0.5;
+      }
+      100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .loading {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .loading.visible {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(106, 17, 203, 0.2);
+      border-top: 5px solid #6a11cb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #e74c3c;
+      font-size: 13px;
+      margin-top: 5px;
+      text-align: left;
+      display: none;
+    }
+
+    .success-message {
+      color: #27ae60;
+      background: rgba(39, 174, 96, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 15px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background bubbles -->
+  <div class="bubbles"></div>
+  
+  <!-- Login Container -->
+  <div class="login-container" id="loginContainer">
+    <div class="logo">Y</div>
+    <h1>Welcome to YUMBRAINS</h1>
+    <p class="subtitle">Sign in to access the interactive prototype</p>
+    
+    <div class="login-options">
+      <!-- Google Login -->
+      <div class="google-btn-container">
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleSignIn"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="filled_blue"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left">
+        </div>
+      </div>
+      
+      <!-- Instagram Login -->
+      <div class="instagram-btn-container">
+        <button class="instagram-btn" id="instagramLogin">
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="#ffffff" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+          </svg>
+          Continue with Instagram
+        </button>
+      </div>
+    </div>
+    
+    <div class="divider"><span>or</span></div>
+    
+    <!-- Email Sign-Up Form -->
+    <div class="email-form" id="emailForm">
+      <div class="success-message" id="successMessage">
+        Account created successfully! Please sign in.
+      </div>
+      
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" placeholder="Enter your full name">
+        <div class="error-message" id="nameError">Please enter your name</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="Enter your email">
+        <div class="error-message" id="emailError">Please enter a valid email</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-container">
+          <input type="password" id="password" placeholder="Create a password">
+          <span class="toggle-password" id="togglePassword">👁️</span>
+        </div>
+        <div class="error-message" id="passwordError">Password must be at least 12 characters</div>
+      </div>
+      
+      <button class="submit-btn" id="signupBtn">Create Account</button>
+      
+      <div class="form-footer">
+        Already have an account? <a href="#" id="toggleLogin">Sign In</a>
+      </div>
+    </div>
+    
+    <!-- User Info After Login -->
+    <div class="user-info" id="userInfo">
+      <div class="user-avatar" id="avatarPlaceholder">U</div>
+      <div class="user-name" id="userName"></div>
+      <div class="user-email" id="userEmail"></div>
+      <div class="user-provider" id="userProvider"></div>
+      <button class="continue-btn" id="continueBtn">Continue to Prototype</button>
+    </div>
+  </div>
+  
+  <!-- Loading Indicator -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Loading prototype...</p>
+  </div>
+  
+  <!-- Prototype Container -->
+  <div class="prototype-container" id="prototypeContainer">
+    <iframe id="iframe-prototype"></iframe>
+  </div>
+  
+  <div class="footer">
+    <p>© 2025 YUMBRAINS. All rights reserved.</p>
+  </div>
+
+  <script>
+    // Generate background bubbles
+    function createBubbles() {
+      const bubblesContainer = document.querySelector('.bubbles');
+      const bubbleCount = 15;
+      
+      for (let i = 0; i < bubbleCount; i++) {
+        const bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        
+        // Random size
+        const size = Math.random() * 80 + 20;
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        
+        // Random position
+        bubble.style.left = `${Math.random() * 100}%`;
+        bubble.style.bottom = `-${size}px`;
+        
+        // Random animation duration
+        const duration = Math.random() * 20 + 10;
+        bubble.style.animationDuration = `${duration}s`;
+        
+        // Random animation delay
+        bubble.style.animationDelay = `${Math.random() * 5}s`;
+        
+        bubblesContainer.appendChild(bubble);
+      }
+    }
+
+    // Handle Google Sign-In
+    function handleGoogleSignIn(response) {
+      // Decode the JWT response
+      const responsePayload = parseJwt(response.credential);
+      
+      // Show user info
+      document.getElementById('avatarPlaceholder').style.display = 'none';
+      document.getElementById('userAvatar').src = responsePayload.picture;
+      document.getElementById('userName').textContent = responsePayload.name;
+      document.getElementById('userEmail').textContent = responsePayload.email;
+      document.getElementById('userProvider').textContent = 'Signed in with Google';
+      
+      // Show the user info section
+      document.getElementById('userInfo').classList.add('visible');
+    }
+
+    // Handle Instagram Login (simulated)
+    document.getElementById('instagramLogin').addEventListener('click', function() {
+      // Simulate Instagram login
+      showUserInfo('Instagram User', 'user@instagram.com', 'Instagram');
+    });
+
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+      const passwordInput = document.getElementById('password');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.textContent = '👁️‍🗨️';
+      } else {
+        passwordInput.type = 'password';
+        this.textContent = '👁️';
+      }
+    });
+
+    // Toggle between signup and login
+    document.getElementById('toggleLogin').addEventListener('click', function(e) {
+      e.preventDefault();
+      const signupBtn = document.getElementById('signupBtn');
+      const formFooter = document.querySelector('.form-footer');
+      const successMessage = document.getElementById('successMessage');
+      
+      if (signupBtn.textContent === 'Create Account') {
+        // Switch to login
+        document.getElementById('name').closest('.form-group').style.display = 'none';
+        signupBtn.textContent = 'Sign In';
+        formFooter.innerHTML = `Don't have an account? <a href="#" id="toggleLogin">Sign Up</a>`;
+        successMessage.style.display = 'none';
+      } else {
+        // Switch to signup
+        document.getElementById('name').closest('.form-group').style.display = 'flex';
+        signupBtn.textContent = 'Create Account';
+        formFooter.innerHTML = `Already have an account? <a href="#" id="toggleLogin">Sign In</a>`;
+      }
+    });
+
+    // Handle email signup/login
+    document.getElementById('signupBtn').addEventListener('click', function() {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const isSignup = this.textContent === 'Create Account';
+      
+      // Reset errors
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.style.display = 'none';
+      });
+      
+      // Validate inputs
+      let isValid = true;
+      
+      if (isSignup && !name) {
+        document.getElementById('nameError').style.display = 'block';
+        isValid = false;
+      }
+      
+      if (!email || !validateEmail(email)) {
+        document.getElementById('emailError').style.display = 'block';
+        isValid = false;
+      }
+      
+      if (!password || password.length < 12) {
+        document.getElementById('passwordError').style.display = 'block';
+        isValid = false;
+      }
+      
+      if (!isValid) return;
+      
+      if (isSignup) {
+        // Simulate account creation
+        document.getElementById('successMessage').style.display = 'block';
+        
+        // Switch to login view
+        setTimeout(() => {
+          document.getElementById('name').closest('.form-group').style.display = 'none';
+          this.textContent = 'Sign In';
+          document.querySelector('.form-footer').innerHTML = `Don't have an account? <a href="#" id="toggleLogin">Sign Up</a>`;
+        }, 1500);
+      } else {
+        // Simulate login
+        showUserInfo(name || 'User', email, 'Email');
+      }
+    });
+
+    // Show user info after login
+    function showUserInfo(name, email, provider) {
+      // Set user initials for avatar
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+      document.getElementById('avatarPlaceholder').textContent = initials;
+      
+      // Display user info
+      document.getElementById('userName').textContent = name;
+      document.getElementById('userEmail').textContent = email;
+      document.getElementById('userProvider').textContent = `Signed in with ${provider}`;
+      
+      // Show the user info section
+      document.getElementById('userInfo').classList.add('visible');
+    }
+
+    // Email validation helper
+    function validateEmail(email) {
+      const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      return re.test(String(email).toLowerCase());
+    }
+
+    // JWT parser
+    function parseJwt(token) {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      return JSON.parse(jsonPayload);
+    }
+
+    // Continue to prototype
+    document.getElementById('continueBtn').addEventListener('click', function() {
+      const loginContainer = document.getElementById('loginContainer');
+      const loading = document.getElementById('loading');
+      
+      // Hide login and show loading
+      loginContainer.classList.add('hidden');
+      loading.classList.add('visible');
+      
+      // After a short delay, show the prototype
+      setTimeout(function() {
+        loading.classList.remove('visible');
+        document.getElementById('prototypeContainer').style.display = 'block';
+        loadFigmaPrototype();
+      }, 1500);
+    });
+
+    // Figma prototype configuration
+    const figmaUrl = "https://embed.figma.com/proto/cK32N2wLKWvMXvx25eiic0/YUMBRAINS_New?node-id=0-1&embed-host=share&scaling=scale-up&viewport-fit=cover&starting-point-node-id=0-1&hide-ui=1&enable-interaction=1";
+    const iframe = document.getElementById('iframe-prototype');
+
+    function loadFigmaPrototype() {
+      iframe.src = figmaUrl;
+      
+      // Fallback mechanism
+      iframe.onload = function() {
+        if(iframe.contentDocument.body.innerHTML === "") {
+          console.log("Reloading to bypass security headers...");
+          setTimeout(() => {
+            iframe.src = figmaUrl + "&reload=" + Date.now();
+          }, 500);
+        }
+      };
+      
+      setTimeout(() => {
+        if(iframe.contentDocument.body.innerHTML === "") {
+          console.log("Adding manual refresh button");
+          const refreshBtn = document.createElement('div');
+          refreshBtn.innerHTML = "Click to Load Prototype";
+          refreshBtn.style.position = 'absolute';
+          refreshBtn.style.top = '100%';
+          refreshBtn.style.left = '100%';
+          refreshBtn.style.transform = 'translate(-50%, -50%)';
+          refreshBtn.style.color = 'white';
+          refreshBtn.style.cursor = 'pointer';
+          refreshBtn.style.zIndex = '30';
+          refreshBtn.addEventListener('click', () => {
+            iframe.src = figmaUrl + "&reload=" + Date.now();
+            refreshBtn.remove();
+          });
+          document.querySelector('.prototype-container').appendChild(refreshBtn);
+        }
+      }, 3000);
+    }
+
+    // Initialize bubbles on load
+    window.addEventListener('load', createBubbles);
+  </script>
+</body>
+</html>
