@@ -16,13 +16,12 @@ phases:
   build:
     commands:
       - echo "Building static website..."
-      - echo "build"git 
+      - echo "build"
       # Add any build commands here (e.g., npm run build if using a static site generator)
 
   post_build:
     commands:
-      - echo "Build completed on $(get.env.CURRENT_DATE)"
-
+      - echo "Build completed on $(date)"
 artifacts:
   files:
     - '**/*'  # Deploys all files
