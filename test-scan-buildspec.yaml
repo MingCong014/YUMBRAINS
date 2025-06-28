@@ -1,0 +1,36 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo "Installing dependencies..."
+      - npm ci
+      - pip install safety bandit  # Security tools
+
+  pre_build:
+    commands:
+      - echo "Running static analysis..."
+      - npm run lint
+      - bandit -r . -f json -o bandit.json || true  # Security scan
+
+  build:
+    commands:
+      - echo "Running tests..."
+      - npm test
+      - npm run coverage
+
+  post_build:
+    commands:
+      - echo "Saving reports..."
+      - mkdir -p reports
+      - cp coverage.xml reports/ || true
+      - cp bandit.json reports/ || true
+
+reports:
+  security_report:
+    files:
+      - 'reports/bandit.json'
+    file-format: JSON
+  test_report:
+    files:
+      - 'reports/coverage.xml'
+    file-format: JUnitXML

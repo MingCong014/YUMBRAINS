@@ -1,0 +1,262 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CI/CD Pipeline for Web Application
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: your-repository
+  GitHubOwner:
+    Type: String
+    Default: your-username
+  GitHubBranch:
+    Type: String
+    Default: '*'  # Triggers on all branches
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [codepipeline.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: PipelinePermissions
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:*'
+                  - 'codebuild:*'
+                  - 'secretsmanager:GetSecretValue'
+                Resource: '*'
+
+  # Test & Scan Project
+  TestScanProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: Test-Scan-Project
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: test-scan-buildspec.yaml
+
+  # Artifact Packaging Project
+  ArtifactProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: Artifact-Packaging-Project
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        EnvironmentVariables:
+          - Name: JFROG_CREDS
+            Type: SECRETS_MANAGER
+            Value: jfrog-credentials-secret
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: artifact-buildspec.yaml
+
+  # Deployment Project
+  DeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: Deployment-Project
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        EnvironmentVariables:
+          - Name: PROD_BUCKET
+            Value: your-prod-bucket
+          - Name: STAGING_BUCKET
+            Value: your-staging-bucket
+          - Name: PREVIEW_BUCKET
+            Value: your-preview-bucket
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deploy-buildspec.yaml
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: CodeBuildPermissions
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:*'
+                  - 'logs:*'
+                  - 'secretsmanager:GetSecretValue'
+                Resource: '*'
+
+  ApprovalTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: your-email@example.com
+
+  AppPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: WebApp-Pipeline
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        # Source Stage
+        - Name: Source
+          Actions:
+            - Name: GitHub-Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: '1'
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: '{{resolve:secretsmanager:github-token}}'
+              OutputArtifacts:
+                - Name: SourceOutput
+
+        # Test & Scan Stage
+        - Name: Test-Scan
+          Actions:
+            - Name: Run-Tests
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref TestScanProject
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+
+        # Artifact Stage
+        - Name: Package-Artifact
+          Actions:
+            - Name: Build-Upload
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref ArtifactProject
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+
+        # Manual Approval
+        - Name: Production-Approval
+          Actions:
+            - Name: Approve-Prod
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: !Ref ApprovalTopic
+                CustomData: "Review changes before production deployment"
+              RunOrder: 1
+
+        # Conditional Deployment
+        - Name: Deploy
+          Actions:
+            - Name: Deploy-Preview
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref DeployProject
+                EnvironmentVariables: |
+                  [{
+                    "name": "DEPLOY_ENV",
+                    "value": "preview",
+                    "type": "PLAINTEXT"
+                  }]
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+              Condition:
+                StringEquals:
+                  "#{SourceVariables.BranchName}": "feature/*"
+
+            - Name: Deploy-Staging
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref DeployProject
+                EnvironmentVariables: |
+                  [{
+                    "name": "DEPLOY_ENV",
+                    "value": "staging",
+                    "type": "PLAINTEXT"
+                  }]
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+              Condition:
+                StringEquals:
+                  "#{SourceVariables.BranchName}": "develop"
+
+            - Name: Deploy-Production
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref DeployProject
+                EnvironmentVariables: |
+                  [{
+                    "name": "DEPLOY_ENV",
+                    "value": "prod",
+                    "type": "PLAINTEXT"
+                  }]
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+              Condition:
+                StringEquals:
+                  "#{SourceVariables.BranchName}": "main"

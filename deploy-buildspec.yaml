@@ -1,0 +1,49 @@
+version: 0.2
+env:
+  variables:
+    # Buckets are set in CodeBuild environment variables
+    PROD_BUCKET: ""
+    STAGING_BUCKET: ""
+    PREVIEW_BUCKET: ""
+  parameter-store:
+    # Add parameter store variables if needed
+phases:
+  install:
+    commands:
+      - echo "Installing deployment tools..."
+      - apt-get update && apt-get install -y awscli
+
+  pre_build:
+    commands:
+      - echo "Setting deployment target: $DEPLOY_ENV"
+      - |
+        case $DEPLOY_ENV in
+          prod)
+            DEPLOY_BUCKET=$PROD_BUCKET
+            ;;
+          staging)
+            DEPLOY_BUCKET=$STAGING_BUCKET
+            ;;
+          preview)
+            DEPLOY_BUCKET=$PREVIEW_BUCKET
+            ;;
+        esac
+      - echo "Deploying to: $DEPLOY_BUCKET"
+
+  build:
+    commands:
+      - echo "Syncing files to S3..."
+      - aws s3 sync ./dist s3://$DEPLOY_BUCKET --delete
+      - |
+        if [ "$DEPLOY_ENV" = "preview" ]; then
+          echo "Deployed Preview URL: https://preview.example.com/${CODEBUILD_SOURCE_VERSION}"
+        fi
+
+  post_build:
+    commands:
+      - echo "Invalidating CloudFront cache..."
+      - |
+        if [ "$DEPLOY_ENV" = "prod" ]; then
+          aws cloudfront create-invalidation --distribution-id YOUR_CF_ID --paths "/*"
+        fi
+      - echo "Deployment to $DEPLOY_ENV complete!"

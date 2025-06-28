@@ -1,0 +1,25 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo "Installing packaging tools..."
+      - apt-get update && apt-get install -y zip
+
+  build:
+    commands:
+      - echo "Building application..."
+      - npm run build
+      - echo "Packaging artifacts..."
+      - zip -r artifact-${CODEBUILD_BUILD_ID}.zip dist/*
+
+  post_build:
+    commands:
+      - echo "Uploading to JFrog Artifactory..."
+      - curl -u "$JFROG_CREDS" -T artifact-${CODEBUILD_BUILD_ID}.zip \
+          "https://your-jfrog-instance.jfrog.io/artifactory/generic-repo/"
+
+artifacts:
+  files:
+    - '*.zip'
+  name: artifact-${CODEBUILD_BUILD_ID}
+  discard-paths: yes
