@@ -21,8 +21,7 @@ phases:
 
   post_build:
     commands:
-      - echo "Build completed on $(date)"  # Fixed this line
-
+      - echo "Build completed on $(date)"
 artifacts:
   files:
     - '**/*'  # Deploys all files
