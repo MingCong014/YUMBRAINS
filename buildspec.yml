@@ -1,0 +1,29 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Installing tools..."
+      - apt-get update -y
+      - apt-get install -y jq  # Only if needed for your scripts
+
+  pre_build:
+    commands:
+      - echo "Current directory: $(pwd)"
+      - echo "Files in directory:"
+      - ls -la
+
+  build:
+    commands:
+      - echo "Building static website..."
+      - echo "build"
+      # Add any build commands here (e.g., npm run build if using a static site generator)
+
+  post_build:
+    commands:
+      - echo "Build completed on $(get.env.CURRENT_DATE)"
+
+artifacts:
+  files:
+    - '**/*'  # Deploys all files
+  base-directory: .  # Or specify a build directory if needed
